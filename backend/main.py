@@ -11,10 +11,12 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
+import urllib.parse
+import urllib.request
 
 # ── 路径 ──
 ROOT = Path(__file__).resolve().parent.parent
@@ -197,6 +199,15 @@ def _fix_url(url: str) -> str:
     return url
 
 
+def _proxy_image_url(original_url: str) -> str:
+    """把外部图片 URL 转成本地代理地址，避免浏览器 Referer 防盗链"""
+    if not original_url:
+        return ""
+    fixed = _fix_url(original_url)
+    encoded = urllib.parse.quote(fixed, safe="")
+    return f"/api/proxy-image?url={encoded}"
+
+
 def products_to_candidates(products: list[dict], query_attrs: dict | None = None) -> list[dict]:
     """把 1688 返回的商品转成候选卡 schema"""
     candidates = []
@@ -219,8 +230,8 @@ def products_to_candidates(products: list[dict], query_attrs: dict | None = None
         else:
             confidence = "条件不明"
 
-        # 图片 URL：兼容多种字段名，补全协议头
-        image_url = _fix_url(
+        # 图片 URL：兼容多种字段名，补全协议头，并走本地代理避免防盗链
+        image_url = _proxy_image_url(
             p.get("image_url") or p.get("imageUrl") or p.get("img_url") or ""
         )
         detail_url = p.get("detail_url") or p.get("detailUrl") or ""
@@ -492,6 +503,32 @@ async def health():
     return {"status": "ok", "vendor_cli_exists": VENDOR_CLI.exists()}
 
 
+@app.get("/api/proxy-image")
+async def proxy_image(url: str = Query(..., description="要代理的外部图片 URL")):
+    """代理外部商品图片，解决浏览器 Referer 防盗链问题"""
+    if not url:
+        raise HTTPException(status_code=400, detail="missing url")
+    target = _fix_url(url)
+    try:
+        req = urllib.request.Request(
+            target,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0.0.0 Safari/537.36"
+                ),
+                "Referer": "https://detail.1688.com/",
+                "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            content_type = resp.headers.get("Content-Type", "image/jpeg")
+            return StreamingResponse(resp, media_type=content_type)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"proxy failed: {e}")
+
+
 @app.post("/api/search")
 async def search(file: UploadFile = File(...), request_json: str = ""):
     """
@@ -524,12 +561,10 @@ async def search(file: UploadFile = File(...), request_json: str = ""):
     result = call_1688_image_search(str(crop_path), limit=10, category=category)
 
     # 清理临时文件
-    for p in (tmp_path, cropped):
-        if p:
-            try:
-                Path(p).unlink(missing_ok=True)
-            except Exception:
-                pass
+    try:
+        Path(tmp_path).unlink(missing_ok=True)
+    except Exception:
+        pass
 
     if not result["success"]:
         # 降级 mock

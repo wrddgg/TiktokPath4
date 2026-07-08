@@ -152,13 +152,13 @@ function App() {
     if (selection) {
       const { type, x, y, w: selW, h: selH } = selection
       if (type === 'box' && selW && selH) {
-        // box 模式：x,y 是选区中心点的归一化坐标
-        const cx = toFrameX(x)
-        const cy = toFrameY(y)
+        // box 模式：SelectionLayer 里的 x,y 是左上角归一化坐标
+        const left = toFrameX(x)
+        const top = toFrameY(y)
         const bw = (selW * dispW) / scale
         const bh = (selH * dispH) / scale
-        sx = Math.max(0, Math.round(cx - bw / 2))
-        sy = Math.max(0, Math.round(cy - bh / 2))
+        sx = Math.max(0, Math.round(left))
+        sy = Math.max(0, Math.round(top))
         sw = Math.min(vw - sx, Math.round(bw))
         sh = Math.min(vh - sy, Math.round(bh))
       } else {
