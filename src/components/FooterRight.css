@@ -1,0 +1,101 @@
+.footer-right {
+  z-index: 100;
+  color: #fff;
+  margin-right: 5px;
+  margin-bottom: 25px;
+}
+
+.sidebar-icon {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  text-align: center;
+  margin-top: 5px;
+  cursor: pointer;
+}
+
+.sidebar-icon svg {
+  width: 35px;
+  height: 35px;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.6));
+}
+
+.sidebar-icon .userprofile {
+  border-radius: 50%;
+  border: #fff 2px solid;
+  background-color: #fff;
+  width: 45px;
+  height: 45px;
+  margin-bottom: 25px;
+}
+
+.sidebar-icon .useradd {
+  border-radius: 50%;
+  background-color: #fff;
+  width: 15px !important;
+  height: 15px !important;
+  color: #FF0000;
+  margin-top: -30px;
+  margin-bottom: 15px;
+}
+
+.sidebar-icon p {
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 5px;
+}
+
+/* ── 「我也要」购买入口 ── */
+.buy-entry-wrap {
+  margin-top: 12px;
+}
+
+.buy-entry-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FE2C55, #FF6B81);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(254, 44, 85, 0.5);
+  animation: pulseBuy 2s ease-in-out infinite;
+}
+
+.buy-entry-btn svg {
+  width: 22px !important;
+  height: 22px !important;
+  color: #fff;
+  filter: none;
+}
+
+.buy-entry-label {
+  font-size: 12px !important;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+}
+
+@keyframes pulseBuy {
+  0%, 100% { transform: scale(1); box-shadow: 0 4px 16px rgba(254, 44, 85, 0.5); }
+  50% { transform: scale(1.06); box-shadow: 0 6px 22px rgba(254, 44, 85, 0.7); }
+}
+
+.record {
+  animation: spinTheRecord infinite 5s linear;
+  filter: invert(1);
+}
+
+.record img {
+  width: 35px;
+  height: 35px;
+  padding: 5px;
+  border-radius: 50px;
+  background-color: #b3afaf;
+}
+
+@keyframes spinTheRecord {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

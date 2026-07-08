@@ -1,0 +1,52 @@
+.clarify-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 230;
+  background: #161616;
+  border-radius: 20px 20px 0 0;
+  padding: 28px 16px 36px;
+  text-align: center;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.clarify-title {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.clarify-sub {
+  color: rgba(255,255,255,0.5);
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+.clarify-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.clarify-option {
+  width: 100%;
+  padding: 13px 0;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+}
+
+.clarify-option:active {
+  background: #FE2C55;
+}
