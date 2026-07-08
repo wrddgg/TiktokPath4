@@ -32,6 +32,11 @@ html {
   scroll-snap-type: y mandatory;
 }
 
+/* 冻结模式下锁定滚动，使覆盖层定位准确 */
+.container:has(.selection-wrap) {
+  overflow: hidden;
+}
+
 .container::-webkit-scrollbar {
   display: none;
 }

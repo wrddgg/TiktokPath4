@@ -111,31 +111,73 @@ function App() {
     const v = videoRefs.current[index]
     if (!v) return null
     const canvas = document.createElement('canvas')
-    const w = v.videoWidth || 720
-    const h = v.videoHeight || 1280
+    const vw = v.videoWidth || 720
+    const vh = v.videoHeight || 1280
 
-    let sx = 0, sy = 0, sw = w, sh = h
+    // 计算 object-fit: cover 的裁剪偏移
+    // 容器（显示区域）的尺寸用 getBoundingClientRect 获取
+    const containerEl = v.parentElement // .video 元素
+    const rect = containerEl?.getBoundingClientRect()
+    const dispW = rect?.width || vw
+    const dispH = rect?.height || vh
 
-    // 如果有选区参数，在抓帧时就裁剪到选区范围
+    // 视频原始宽高比 vs 显示区域宽高比
+    const videoAspect = vw / vh
+    const dispAspect = dispW / dispH
+
+    let scale, offsetX, offsetY, visibleW, visibleH
+    if (videoAspect > dispAspect) {
+      // 视频更宽 → 左右被裁剪
+      scale = dispH / vh
+      visibleW = vw * scale // 视频在显示区域的实际宽度（缩放后）
+      visibleH = dispH
+      offsetX = (visibleW - dispW) / 2 // 视频左边超出显示区域的部分（缩放后像素）
+      offsetY = 0
+    } else {
+      // 视频更高 → 上下被裁剪
+      scale = dispW / vw
+      visibleW = dispW
+      visibleH = vh * scale
+      offsetX = 0
+      offsetY = (visibleH - dispH) / 2
+    }
+
+    // 将显示区域归一化坐标 (0~1) 映射到视频原始帧坐标
+    // normCoord * dispSize → 显示像素 → +offset → 缩放后视频像素 → /scale → 原始帧像素
+    const toFrameX = (nx) => (nx * dispW + offsetX) / scale
+    const toFrameY = (ny) => (ny * dispH + offsetY) / scale
+
+    let sx = 0, sy = 0, sw = vw, sh = vh
+
     if (selection) {
       const { type, x, y, w: selW, h: selH } = selection
       if (type === 'box' && selW && selH) {
-        sx = Math.max(0, Math.round((x - selW / 2) * w))
-        sy = Math.max(0, Math.round((y - selH / 2) * h))
-        sw = Math.min(w - sx, Math.round(selW * w))
-        sh = Math.min(h - sy, Math.round(selH * h))
+        // box 模式：x,y 是选区中心点的归一化坐标
+        const cx = toFrameX(x)
+        const cy = toFrameY(y)
+        const bw = (selW * dispW) / scale
+        const bh = (selH * dispH) / scale
+        sx = Math.max(0, Math.round(cx - bw / 2))
+        sy = Math.max(0, Math.round(cy - bh / 2))
+        sw = Math.min(vw - sx, Math.round(bw))
+        sh = Math.min(vh - sy, Math.round(bh))
       } else {
         // point 模式：以点为中心取 30% 区域
-        const boxW = Math.round(w * 0.30)
-        const boxH = Math.round(h * 0.30)
-        sx = Math.max(0, Math.round(x * w - boxW / 2))
-        sy = Math.max(0, Math.round(y * h - boxH / 2))
-        sw = Math.min(w - sx, boxW)
-        sh = Math.min(h - sy, boxH)
+        const cx = toFrameX(x)
+        const cy = toFrameY(y)
+        const bw = (dispW * 0.30) / scale
+        const bh = (dispH * 0.30) / scale
+        sx = Math.max(0, Math.round(cx - bw / 2))
+        sy = Math.max(0, Math.round(cy - bh / 2))
+        sw = Math.min(vw - sx, Math.round(bw))
+        sh = Math.min(vh - sy, Math.round(bh))
       }
     }
 
-    // 裁剪后画布尺寸至少保证一定分辨率
+    // 确保裁剪区域有效
+    sw = Math.max(50, sw)
+    sh = Math.max(50, sh)
+
     canvas.width = Math.max(sw, 200)
     canvas.height = Math.max(sh, 400)
 
@@ -147,7 +189,6 @@ function App() {
         canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.85)
       })
     } catch {
-      // 跨域视频无法抓帧，返回 null，后端会降级 mock
       return null
     }
   }, [])
@@ -298,58 +339,58 @@ function App() {
         ))}
 
         {isFeedMode && <BottomNavbar />}
-      </div>
 
-      {/* ── Swipe-to-Own 覆盖层 ── */}
+        {/* ── Swipe-to-Own 覆盖层（在 container 内部，坐标系与视频一致） ── */}
 
-      {/* 冻结模式下：点选层透明覆盖在已暂停的视频上方 */}
-      {(mode === 'frozen' || mode === 'loading' || mode === 'results' || mode === 'clarify') && (
-        <SelectionLayer
-          selection={selection}
-          onSelect={handleSelect}
-          interactive={mode === 'frozen'}
-        />
-      )}
+        {/* 冻结模式下：点选层覆盖在已暂停的视频上方 */}
+        {(mode === 'frozen' || mode === 'loading' || mode === 'results' || mode === 'clarify') && (
+          <SelectionLayer
+            selection={selection}
+            onSelect={handleSelect}
+            interactive={mode === 'frozen'}
+          />
+        )}
 
-      {/* 冻结 badge */}
-      {mode === 'frozen' && (
-        <div className="freeze-badge">已冻结 · 点选你想找的服饰</div>
-      )}
+        {/* 冻结 badge */}
+        {mode === 'frozen' && (
+          <div className="freeze-badge">已冻结 · 点选你想找的服饰</div>
+        )}
 
-      {/* Loading */}
-      {mode === 'loading' && (
-        <div className="loading-overlay">
-          <div className="spinner" />
-          <div className="loading-text">
-            {selection ? '正在找相似可买款…' : '正在识别…'}
+        {/* Loading */}
+        {mode === 'loading' && (
+          <div className="loading-overlay">
+            <div className="spinner" />
+            <div className="loading-text">
+              {selection ? '正在找相似可买款…' : '正在识别…'}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* 候选卡 */}
-      {mode === 'results' && candidates.length > 0 && (
-        <CandidatePanel
-          candidates={candidates}
-          onRefine={handleRefine}
-          onShuffle={handleShuffle}
-          onClose={handleClose}
-          onAction={handleCandidateAction}
-          refineUsed={refineUsed}
-        />
-      )}
+        {/* 候选卡 */}
+        {mode === 'results' && candidates.length > 0 && (
+          <CandidatePanel
+            candidates={candidates}
+            onRefine={handleRefine}
+            onShuffle={handleShuffle}
+            onClose={handleClose}
+            onAction={handleCandidateAction}
+            refineUsed={refineUsed}
+          />
+        )}
 
-      {/* 澄清弹层 */}
-      {mode === 'clarify' && (
-        <ClarifySheet
-          options={clarifyOptions}
-          onAnswer={handleClarify}
-        />
-      )}
+        {/* 澄清弹层 */}
+        {mode === 'clarify' && (
+          <ClarifySheet
+            options={clarifyOptions}
+            onAnswer={handleClarify}
+          />
+        )}
 
-      {/* 错误提示 */}
-      {error && mode !== 'loading' && (
-        <div className="error-toast">{error}（已用本地数据演示）</div>
-      )}
+        {/* 错误提示 */}
+        {error && mode !== 'loading' && (
+          <div className="error-toast">{error}（已用本地数据演示）</div>
+        )}
+      </div>
     </div>
   )
 }

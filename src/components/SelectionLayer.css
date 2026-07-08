@@ -1,5 +1,5 @@
 .selection-wrap {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 200;
   background: transparent; /* 透明，露出底下已暂停的视频帧 */
@@ -73,7 +73,7 @@
 }
 
 .freeze-badge {
-  position: fixed;
+  position: absolute;
   top: 60px;
   left: 50%;
   transform: translateX(-50%);
@@ -88,7 +88,7 @@
 }
 
 .loading-overlay {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 250;
   background: rgba(0,0,0,0.8);
@@ -116,7 +116,7 @@
 }
 
 .error-toast {
-  position: fixed;
+  position: absolute;
   top: 70px;
   left: 50%;
   transform: translateX(-50%);

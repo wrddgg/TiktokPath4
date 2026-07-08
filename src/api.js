@@ -1,4 +1,5 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
+// 生产环境（Nginx 代理 /api/ → 后端）用相对路径，开发环境用 localhost:8000
+const API_BASE = import.meta.env.VITE_API_BASE || ''
 
 /**
  * 发起相似商品搜索

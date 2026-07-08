@@ -185,6 +185,18 @@ def _extract_products(payload: dict) -> list[dict]:
     return []
 
 
+def _fix_url(url: str) -> str:
+    """补全 1688 返回的无协议头 URL（如 //cbu01.alicdn.com/...）"""
+    if not url:
+        return ""
+    url = str(url).strip()
+    if url.startswith("//"):
+        return "https:" + url
+    if url.startswith("/"):
+        return "https://cbu01.alicdn.com" + url
+    return url
+
+
 def products_to_candidates(products: list[dict], query_attrs: dict | None = None) -> list[dict]:
     """把 1688 返回的商品转成候选卡 schema"""
     candidates = []
@@ -207,12 +219,20 @@ def products_to_candidates(products: list[dict], query_attrs: dict | None = None
         else:
             confidence = "条件不明"
 
+        # 图片 URL：兼容多种字段名，补全协议头
+        image_url = _fix_url(
+            p.get("image_url") or p.get("imageUrl") or p.get("img_url") or ""
+        )
+        detail_url = p.get("detail_url") or p.get("detailUrl") or ""
+        if not detail_url and p.get("product_id"):
+            detail_url = f"https://detail.1688.com/offer/{p['product_id']}.html"
+
         candidates.append({
             "rank": i + 1,
             "product_id": str(p.get("product_id") or p.get("itemId", "")),
             "title": p.get("title", "未知商品"),
-            "image_url": p.get("image_url") or p.get("imageUrl", ""),
-            "detail_url": p.get("detail_url") or p.get("detailUrl", ""),
+            "image_url": image_url,
+            "detail_url": detail_url,
             "price": p.get("price") or p.get("currentPrice", 0),
             "supplier": p.get("supplier") or p.get("company", "未知供应商"),
             "similarity_score": round(score, 4),
@@ -495,15 +515,9 @@ async def search(file: UploadFile = File(...), request_json: str = ""):
     with open(tmp_path, "wb") as f:
         f.write(img_bytes)
 
-    # 如果用户给了选区，裁剪图片
+    # 前端已经按选区裁剪了图片（考虑了 object-fit: cover 偏移），
+    # 后端直接用前端传来的裁剪后图片，不再二次裁剪
     crop_path = tmp_path
-    cropped = None
-    if req and req.region:
-        cropped = TEMP_DIR / f"{request_id}_crop.jpg"
-        try:
-            crop_path = _crop_by_region(str(tmp_path), req.region, str(cropped))
-        except Exception:
-            crop_path = tmp_path
 
     # 调用 1688 image_search
     category = req.category.get("primary", "") if req and req.category else ""
