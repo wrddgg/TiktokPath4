@@ -11,4 +11,13 @@ backend/**/__pycache__/
 backend/.venv/
 backend/venv/
 backend/tmp/
+
+# vendor 缓存文件
+**/__pycache__/
 *.pyc
+
+# 临时文件
+*_files.txt
+git_status.txt
+git_log.txt
+vendor_tracked.txt
